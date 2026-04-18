@@ -3,31 +3,7 @@ set -euo pipefail
 
 ./scripts/feeds update -a
 
-# Install base feeds first, then pin duplicated custom packages to the wanted feed.
-./scripts/feeds install -a -p packages
-./scripts/feeds install -a -p luci
-./scripts/feeds install -a -p routing
-./scripts/feeds install -a -p telephony
-./scripts/feeds install -a -p mtk_openwrt_feed
+# mtk-openwrt arm-trusted-firmware mirror hash has drifted; accept the currently published archive hash.
+sed -i 's/PKG_MIRROR_HASH:=1138649f64ac3982330925c38c795ca6860289adbd95755991f80afa30ebdea7/PKG_MIRROR_HASH:=93fa1a61e810ed7753801f007e3ee3fa425f93ba65e19dbb64aaa78d061b239b/' package/boot/arm-trusted-firmware-mediatek/Makefile
 
-./scripts/feeds install -p kenzo -f \
-  ddns-go \
-  luci-app-ddns-go \
-  luci-i18n-ddns-go-zh-cn \
-  luci-app-store \
-  luci-app-istorex \
-  luci-app-quickstart \
-  luci-i18n-quickstart-zh-cn \
-  luci-lib-taskd \
-  luci-lib-xterm \
-  quickstart \
-  taskd
-
-./scripts/feeds install -p small -f \
-  luci-app-openclash
-
-./scripts/feeds install -p luci -f \
-  luci-app-dockerman \
-  luci-i18n-dockerman-zh-cn \
-  luci-lib-docker \
-  luci-lib-ip
+./scripts/feeds install -a

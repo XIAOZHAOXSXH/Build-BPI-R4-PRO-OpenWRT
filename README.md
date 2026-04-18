@@ -1,24 +1,13 @@
 # Build-BPI-R4-PRO-OpenWRT
 
-用于 GitHub Actions 云编译 `BPI-R4-PRO-8X` OpenWrt 固件。
+用于 GitHub Actions 云编译 `BPI-R4-PRO-8X` 纯净版固件。
 
-预装内容：
+说明：
 
-- `luci-app-openclash`
-- `ddns-go`
-- `luci-app-ddns-go`
-- `luci-app-dockerman`
-- `docker` / `dockerd` / `containerd` / `runc` / `docker-compose`
-- `luci-app-store`
-- `luci-app-istorex`
-- `luci-app-quickstart`
-
-特性说明：
-
-- 使用 HTTPS 拉取源码与 feeds，不包含 SSH 或 tmate 调试步骤
-- `.config` 在仓库内维护，工作流中执行 `make defconfig`
-- 构建完成后同时上传 `Actions Artifact` 与 `GitHub Release`
-- Release 中附带本次实际展开后的 `build.config`
+- 只保留目标机型与官方 SD 卡镜像所需的最小配置
+- 不额外预装自定义应用
+- 产物要求包含官方格式的 `openwrt-mediatek-filogic-bananapi_bpi-r4-pro-8x-sdcard.img.gz`
+- 构建完成后上传 `Actions Artifact` 与 `GitHub Release`
 
 触发方式：
 

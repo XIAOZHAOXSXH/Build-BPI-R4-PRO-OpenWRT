@@ -63,7 +63,7 @@ jobs:
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           make defconfig
-          grep -E "CONFIG_TARGET_|CONFIG_PACKAGE_(luci-app-openclash|ddns-go|luci-app-ddns-go|luci-app-dockerman|luci-app-store|luci-app-istorex|docker|dockerd|containerd|runc|docker-compose)" .config
+          grep -E "CONFIG_TARGET_|CONFIG_TARGET_ROOTFS_(INITRAMFS|INITRAMFS_SEPARATE|SQUASHFS)" .config
 
       - name: Download Sources
         working-directory: ${{ env.OPENWRT_DIR }}
@@ -75,6 +75,12 @@ jobs:
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
           make -j"$(nproc)" || make -j1 V=s
+
+      - name: Verify Official SD Card Image
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          ls -lh bin/targets/mediatek/filogic
+          test -f bin/targets/mediatek/filogic/openwrt-mediatek-filogic-bananapi_bpi-r4-pro-8x-sdcard.img.gz
 
       - name: Prepare Release Files
         id: meta
