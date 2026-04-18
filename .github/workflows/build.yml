@@ -65,6 +65,12 @@ jobs:
           make defconfig
           grep -E "CONFIG_TARGET_|CONFIG_TARGET_ROOTFS_(INITRAMFS|INITRAMFS_SEPARATE|SQUASHFS)" .config
 
+      - name: Prepare Linux Firmware Source
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          make package/firmware/linux-firmware/download -j1 V=s
+          make package/firmware/linux-firmware/prepare -j1 V=s
+
       - name: Download Sources
         working-directory: ${{ env.OPENWRT_DIR }}
         run: |
