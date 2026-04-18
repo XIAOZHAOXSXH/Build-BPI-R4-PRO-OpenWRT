@@ -1,0 +1,113 @@
+name: Build BPI-R4-PRO OpenWrt
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_REPO: https://github.com/BPI-SINOVOIP/BPI-R4PRO-8X-OPENWRT-V24.10.0-Master-Devel.git
+  SOURCE_BRANCH: main
+  OPENWRT_DIR: openwrt
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 720
+
+    steps:
+      - name: Checkout Build Repo
+        uses: actions/checkout@v4
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune -af || true
+          df -h
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib \
+            g++-multilib genisoimage git gperf haveged help2man intltool libc6-dev-i386 \
+            libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev \
+            libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev \
+            libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch \
+            pkgconf python3 python3-pyelftools python3-setuptools qemu-utils rsync scons \
+            squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto \
+            xxd zlib1g-dev zstd
+
+      - name: Clone Source Tree
+        run: |
+          git clone --depth 1 --branch "${SOURCE_BRANCH}" "${SOURCE_REPO}" "${OPENWRT_DIR}"
+
+      - name: Update And Install Feeds
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          bash ../scripts/install-feeds.sh
+
+      - name: Load Build Config
+        run: |
+          cp .config "${OPENWRT_DIR}/.config"
+
+      - name: Expand Config
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          make defconfig
+          grep -E "CONFIG_TARGET_|CONFIG_PACKAGE_(luci-app-openclash|ddns-go|luci-app-ddns-go|luci-app-dockerman|luci-app-store|luci-app-istorex|docker|dockerd|containerd|runc|docker-compose)" .config
+
+      - name: Download Sources
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          find dl -size -1024c -delete
+          make download -j"$(nproc)" || make download -j1 V=s
+
+      - name: Build Firmware
+        working-directory: ${{ env.OPENWRT_DIR }}
+        run: |
+          make -j"$(nproc)" || make -j1 V=s
+
+      - name: Prepare Release Files
+        id: meta
+        run: |
+          BUILD_DATE="$(date -u +%Y%m%d-%H%M)"
+          SOURCE_COMMIT="$(git -C "${OPENWRT_DIR}" rev-parse HEAD)"
+          TAG="bpi-r4-pro-${BUILD_DATE}-r${GITHUB_RUN_ID}a${GITHUB_RUN_ATTEMPT}"
+          mkdir -p release
+          cp -a "${OPENWRT_DIR}/bin/targets/mediatek/filogic/." release/
+          cp "${OPENWRT_DIR}/.config" release/build.config
+          rm -rf release/packages
+          {
+            echo "Source repository: ${SOURCE_REPO}"
+            echo "Source branch: ${SOURCE_BRANCH}"
+            echo "Source commit: ${SOURCE_COMMIT}"
+            echo "GitHub Actions run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          } > release/RELEASE.txt
+          echo "build_date=${BUILD_DATE}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpi-r4-pro-openwrt-${{ steps.meta.outputs.build_date }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: BPI-R4-PRO OpenWrt ${{ steps.meta.outputs.build_date }}
+          body_path: release/RELEASE.txt
+          files: release/*
+          fail_on_unmatched_files: true
